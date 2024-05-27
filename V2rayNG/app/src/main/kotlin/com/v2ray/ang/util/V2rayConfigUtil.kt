@@ -161,7 +161,7 @@ object V2rayConfigUtil {
         if (settingsStorage?.decodeBool(AppConfig.PREF_LOCAL_DNS_ENABLED) == true
             && settingsStorage?.decodeBool(AppConfig.PREF_FAKE_DNS_ENABLED) == true
         ) {
-            v2rayConfig.fakedns = listOf(V2rayConfig.FakednsBean())
+            // v2rayConfig.fakedns = listOf(V2rayConfig.FakednsBean())
             v2rayConfig.outbounds.filter { it.protocol == PROTOCOL_FREEDOM && it.tag == TAG_DIRECT }
                 .forEach {
                     it.settings?.domainStrategy = "UseIP"
@@ -323,7 +323,7 @@ object V2rayConfigUtil {
     private fun customLocalDns(v2rayConfig: V2rayConfig): Boolean {
         try {
             if (settingsStorage?.decodeBool(AppConfig.PREF_FAKE_DNS_ENABLED) == true) {
-                val geositeCn = arrayListOf("geosite:cn")
+                val geositeCn = arrayListOf("geosite:geolocation-!cn")
                 val proxyDomain = userRule2Domian(
                     settingsStorage?.decodeString(AppConfig.PREF_V2RAY_ROUTING_AGENT)
                         ?: ""

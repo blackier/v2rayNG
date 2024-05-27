@@ -112,7 +112,6 @@ data class V2rayConfig(
 
             data class ServersBean(var address: String = "",
                                    var method: String = "chacha20-poly1305",
-                                   var ota: Boolean = false,
                                    var password: String = "",
                                    var port: Int = DEFAULT_PORT,
                                    var level: Int = DEFAULT_LEVEL,

@@ -1,2 +1,4 @@
 geosite:cn,
-geosite:geolocation-cn
+geosite:geolocation-cn,
+geoip:private,
+geoip:cn

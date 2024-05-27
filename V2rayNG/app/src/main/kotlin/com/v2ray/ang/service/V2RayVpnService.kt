@@ -27,10 +27,10 @@ import kotlin.concurrent.thread
 class V2RayVpnService : VpnService(), ServiceControl {
     companion object {
         private const val VPN_MTU = 1500
-        private const val PRIVATE_VLAN4_CLIENT = "26.26.26.1"
-        private const val PRIVATE_VLAN4_ROUTER = "26.26.26.2"
-        private const val PRIVATE_VLAN6_CLIENT = "da26:2626::1"
-        private const val PRIVATE_VLAN6_ROUTER = "da26:2626::2"
+        private const val PRIVATE_VLAN4_CLIENT = "172.19.0.1"
+        private const val PRIVATE_VLAN4_ROUTER = "172.19.0.2"
+        private const val PRIVATE_VLAN6_CLIENT = "fdfe:dcba:9876::1"
+        private const val PRIVATE_VLAN6_ROUTER = "fdfe:dcba:9876::2"
         private const val TUN2SOCKS = "libtun2socks.so"
     }
 
@@ -123,6 +123,7 @@ class V2RayVpnService : VpnService(), ServiceControl {
                 val addr = it.split('/')
                 builder.addRoute(addr[0], addr[1].toInt())
             }
+            builder.addRoute(PRIVATE_VLAN4_ROUTER, 32)
         } else {
             builder.addRoute("0.0.0.0", 0)
         }
@@ -208,7 +209,7 @@ class V2RayVpnService : VpnService(), ServiceControl {
         val socksPort = Utils.parseInt(settingsStorage?.decodeString(AppConfig.PREF_SOCKS_PORT), AppConfig.PORT_SOCKS.toInt())
         val cmd = arrayListOf(File(applicationContext.applicationInfo.nativeLibraryDir, TUN2SOCKS).absolutePath,
                 "--netif-ipaddr", PRIVATE_VLAN4_ROUTER,
-                "--netif-netmask", "255.255.255.252",
+                "--netif-netmask", "255.255.255.0",
                 "--socks-server-addr", "127.0.0.1:${socksPort}",
                 "--tunmtu", VPN_MTU.toString(),
                 "--sock-path", "sock_path",//File(applicationContext.filesDir, "sock_path").absolutePath,
