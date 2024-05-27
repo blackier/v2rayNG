@@ -7,6 +7,7 @@ import com.v2ray.ang.AppConfig.MSG_MEASURE_CONFIG
 import com.v2ray.ang.AppConfig.MSG_MEASURE_CONFIG_CANCEL
 import com.v2ray.ang.AppConfig.MSG_MEASURE_CONFIG_SUCCESS
 import com.v2ray.ang.util.MessageUtil
+import com.v2ray.ang.util.MmkvManager
 import com.v2ray.ang.util.SpeedtestUtil
 import com.v2ray.ang.util.Utils
 import go.Seq
@@ -28,6 +29,10 @@ class V2RayTestService : Service() {
             MSG_MEASURE_CONFIG -> {
                 val contentPair = intent.getSerializableExtra("content") as Pair<String, String>
                 realTestScope.launch {
+                    val domain = MmkvManager.decodeServerConfig(contentPair.first) ?.getV2rayPointDomainAndPort()?:""
+                    if(domain.isNotEmpty()){
+                        Libv2ray.prepareDomain(domain)
+                    }
                     val result = SpeedtestUtil.realPing(contentPair.second)
                     MessageUtil.sendMsg2UI(this@V2RayTestService, MSG_MEASURE_CONFIG_SUCCESS, Pair(contentPair.first, result))
                 }
