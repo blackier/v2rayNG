@@ -9,9 +9,9 @@ import (
 	"os"
 	"time"
 
-	v2rayNet "github.com/v2fly/v2ray-core/v4/common/net"
-	"github.com/v2fly/v2ray-core/v4/features/dns"
-	"github.com/v2fly/v2ray-core/v4/transport/internet"
+	v2rayNet "github.com/xtls/xray-core/common/net"
+	"github.com/xtls/xray-core/features/dns"
+	"github.com/xtls/xray-core/transport/internet"
 	"golang.org/x/sys/unix"
 )
 
@@ -20,8 +20,9 @@ type Protector interface {
 }
 
 type protectedDialer struct {
-	protector Protector
-	resolver  func(domain string) ([]net.IP, error)
+	protector  Protector
+	resolver   func(domain string) ([]net.IP, error)
+	selectedIP net.IP
 }
 
 func (dialer protectedDialer) Dial(ctx context.Context, source v2rayNet.Address, destination v2rayNet.Destination, sockopt *internet.SocketConfig) (conn net.Conn, err error) {
@@ -53,9 +54,17 @@ func (dialer protectedDialer) Dial(ctx context.Context, source v2rayNet.Address,
 		}
 		destination.Address = v2rayNet.IPAddress(ip)
 		conn, err = dialer.dial(ctx, source, destination, sockopt)
+		dialer.selectedIP = ip
+	}
+	if err != nil {
+		dialer.selectedIP = nil
 	}
 
 	return conn, err
+}
+
+func (dialer protectedDialer) DestIpAddress() net.IP {
+	return dialer.selectedIP
 }
 
 func (dialer protectedDialer) dial(ctx context.Context, source v2rayNet.Address, destination v2rayNet.Destination, sockopt *internet.SocketConfig) (conn net.Conn, err error) {

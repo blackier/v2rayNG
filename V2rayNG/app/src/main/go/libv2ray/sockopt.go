@@ -6,9 +6,9 @@ import (
 	"log"
 	"net"
 
-	"github.com/v2fly/v2ray-core/v4/common/errors"
-	v2rayNet "github.com/v2fly/v2ray-core/v4/common/net"
-	"github.com/v2fly/v2ray-core/v4/transport/internet"
+	"github.com/xtls/xray-core/common/errors"
+	v2rayNet "github.com/xtls/xray-core/common/net"
+	"github.com/xtls/xray-core/transport/internet"
 	"golang.org/x/sys/unix"
 )
 
@@ -54,11 +54,12 @@ func applyOutboundSocketOptions(network string, address string, fd uintptr, conf
 
 	if isTCPSocket(network) {
 		switch config.Tfo {
-		case internet.SocketConfig_Enable:
+		case int32(internet.SocketConfig_TProxy):
 			if err := unix.SetsockoptInt(int(fd), unix.SOL_TCP, TCP_FASTOPEN_CONNECT, 1); err != nil {
 				return fmt.Errorf("failed to set TCP_FASTOPEN_CONNECT=1, %v", err)
 			}
-		case internet.SocketConfig_Disable:
+		case int32(internet.SocketConfig_Off):
+		case int32(internet.SocketConfig_Redirect):
 			if err := unix.SetsockoptInt(int(fd), unix.SOL_TCP, TCP_FASTOPEN_CONNECT, 0); err != nil {
 				return fmt.Errorf("failed to set TCP_FASTOPEN_CONNECT=0, %v", err)
 			}

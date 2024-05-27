@@ -10,5 +10,6 @@ curl -o assets/geoip.dat -L https://github.com/v2ray/geoip/raw/release/geoip.dat
 # go go env -w GOPROXY=https://goproxy.io,direct
 # go install golang.org/x/mobile/cmd/gomobile@latest
 mkdir ../../../../libs
+# go mod tidy -v
 gomobile init
 gomobile bind -v -o ../../../../libs/libv2ray.aar -androidapi 21 -ldflags "-s -w -buildid=" .

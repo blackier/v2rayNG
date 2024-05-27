@@ -10,10 +10,10 @@ import (
 
 	"golang.org/x/net/dns/dnsmessage"
 
-	appdns "github.com/v2fly/v2ray-core/v4/app/dns"
-	"github.com/v2fly/v2ray-core/v4/common/errors"
-	"github.com/v2fly/v2ray-core/v4/common/net"
-	featdns "github.com/v2fly/v2ray-core/v4/features/dns"
+	appdns "github.com/xtls/xray-core/app/dns"
+	"github.com/xtls/xray-core/common/errors"
+	"github.com/xtls/xray-core/common/net"
+	featdns "github.com/xtls/xray-core/features/dns"
 )
 
 type record struct {
