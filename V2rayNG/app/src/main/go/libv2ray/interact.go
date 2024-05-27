@@ -1,6 +1,7 @@
 package libv2ray
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -32,6 +33,25 @@ import (
 const (
 	v2Asset = "v2ray.location.asset"
 )
+
+var memoryAssets *MemoryAssets = nil
+
+type MemoryAssets struct {
+	sync.RWMutex
+	assets map[string][]byte
+}
+
+// NopSeekCloser returns a ReadCloser with a no-op Close method wrapping
+// the provided ReadSeeker r.
+func NopSeekCloser(r io.ReadSeeker) io.ReadSeekCloser {
+	return nopSeekCloser{r}
+}
+
+type nopSeekCloser struct {
+	io.ReadSeeker
+}
+
+func (nopSeekCloser) Close() error { return nil }
 
 /*V2RayPoint V2Ray Point Server
 This is territory of Go, so no getter and setters!
@@ -170,13 +190,45 @@ func InitV2Env(envPath string) {
 		os.Setenv(v2Asset, envPath)
 	}
 
-	//Now we handle read, fallback to gomobile asset (apk assets)
-	v2filesystem.NewFileReader = func(path string) (io.ReadCloser, error) {
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			_, file := filepath.Split(path)
-			return mobasset.Open(file)
+	if memoryAssets == nil {
+		log.Printf("create MemoryAssets")
+		memoryAssets = &MemoryAssets{
+			assets: map[string][]byte{},
 		}
-		return os.Open(path)
+	}
+
+	//Now we handle read, fallback to gomobile asset (apk assets)
+	v2filesystem.NewFileSeeker = func(path string) (r io.ReadSeekCloser, err error) {
+		memoryAssets.RLock()
+		content, found := memoryAssets.assets[path]
+		memoryAssets.RUnlock()
+
+		if !found {
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				_, file := filepath.Split(path)
+				r, err = mobasset.Open(file)
+			} else {
+				r, err = os.Open(path)
+			}
+			if err != nil {
+				return nil, err
+			}
+			content, err = io.ReadAll(r)
+			if err == nil {
+				memoryAssets.Lock()
+				memoryAssets.assets[path] = content
+				memoryAssets.Unlock()
+				log.Printf("local asset: %s", path)
+			} else {
+				log.Printf("read asset failed: %s", path)
+			}
+		} else {
+			log.Printf("cached asset: %s", path)
+		}
+		return NopSeekCloser(bytes.NewReader(content)), err
+	}
+	v2filesystem.NewFileReader = func(path string) (io.ReadCloser, error) {
+		return v2filesystem.NewFileSeeker(path)
 	}
 }
 

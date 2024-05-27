@@ -35,7 +35,7 @@ object V2rayConfigUtil {
     /**
      * 生成v2ray的客户端配置文件
      */
-    fun getV2rayConfig(context: Context, guid: String): Result {
+    fun getV2rayConfig(context: Context, guid: String, forTest: Boolean = false): Result {
         try {
             val config = MmkvManager.decodeServerConfig(guid) ?: return Result(false, "")
             if (config.configType == EConfigType.CUSTOM) {
@@ -49,7 +49,7 @@ object V2rayConfigUtil {
                 return Result(true, customConfig)
             }
             val outbound = config.getProxyOutbound() ?: return Result(false, "")
-            val result = getV2rayNonCustomConfig(context, outbound, config.remarks)
+            val result = getV2rayNonCustomConfig(context, outbound, config.remarks, forTest)
             //Log.d(ANG_PACKAGE, result.content)
             return result
         } catch (e: Exception) {
@@ -65,6 +65,7 @@ object V2rayConfigUtil {
         context: Context,
         outbound: V2rayConfig.OutboundBean,
         remarks: String,
+        forTest: Boolean = false
     ): Result {
         val result = Result(false, "")
         //取得默认配置
@@ -86,11 +87,11 @@ object V2rayConfigUtil {
 
         updateOutboundFragment(v2rayConfig)
 
-        routing(v2rayConfig)
+        routing(v2rayConfig, forTest)
 
         fakedns(v2rayConfig)
 
-        dns(v2rayConfig)
+        dns(v2rayConfig, forTest)
 
         if (settingsStorage?.decodeBool(AppConfig.PREF_LOCAL_DNS_ENABLED) == true) {
             customLocalDns(v2rayConfig)
@@ -172,7 +173,7 @@ object V2rayConfigUtil {
     /**
      * routing
      */
-    private fun routing(v2rayConfig: V2rayConfig): Boolean {
+    private fun routing(v2rayConfig: V2rayConfig, forTest: Boolean = false): Boolean {
         try {
             routingUserRule(
                 settingsStorage?.decodeString(AppConfig.PREF_V2RAY_ROUTING_AGENT)
@@ -190,7 +191,7 @@ object V2rayConfigUtil {
             v2rayConfig.routing.domainStrategy =
                 settingsStorage?.decodeString(AppConfig.PREF_ROUTING_DOMAIN_STRATEGY)
                     ?: "IPIfNonMatch"
-//            v2rayConfig.routing.domainMatcher = "mph"
+            v2rayConfig.routing.domainMatcher = "mph"
             val routingMode = settingsStorage?.decodeString(AppConfig.PREF_ROUTING_MODE)
                 ?: ERoutingMode.BYPASS_LAN_MAINLAND.value
 
@@ -200,6 +201,8 @@ object V2rayConfigUtil {
                 domain = arrayListOf("domain:googleapis.cn")
             )
 
+            if (forTest)
+                return true
             when (routingMode) {
                 ERoutingMode.BYPASS_LAN.value -> {
                     routingGeo("ip", "private", AppConfig.TAG_DIRECT, v2rayConfig)
@@ -395,7 +398,7 @@ object V2rayConfigUtil {
         return true
     }
 
-    private fun dns(v2rayConfig: V2rayConfig): Boolean {
+    private fun dns(v2rayConfig: V2rayConfig, forTest: Boolean = false): Boolean {
         try {
             val hosts = mutableMapOf<String, String>()
             val servers = ArrayList<Any>()
@@ -429,7 +432,7 @@ object V2rayConfigUtil {
             val routingMode = settingsStorage?.decodeString(AppConfig.PREF_ROUTING_MODE)
                 ?: ERoutingMode.BYPASS_LAN_MAINLAND.value
             val isCnRoutingMode =
-                (routingMode == ERoutingMode.BYPASS_MAINLAND.value || routingMode == ERoutingMode.BYPASS_LAN_MAINLAND.value)
+                !forTest && (routingMode == ERoutingMode.BYPASS_MAINLAND.value || routingMode == ERoutingMode.BYPASS_LAN_MAINLAND.value)
             val geoipCn = arrayListOf("geoip:cn")
 
             if (directDomain.size > 0) {
