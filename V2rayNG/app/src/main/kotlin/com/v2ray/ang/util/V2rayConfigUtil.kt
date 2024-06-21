@@ -433,7 +433,7 @@ object V2rayConfigUtil {
                 ?: ERoutingMode.BYPASS_LAN_MAINLAND.value
             val isCnRoutingMode =
                 !forTest && (routingMode == ERoutingMode.BYPASS_MAINLAND.value || routingMode == ERoutingMode.BYPASS_LAN_MAINLAND.value)
-            val geoipCn = arrayListOf("geoip:cn")
+            val geoipCn = arrayListOf("geoip:cn", "geoip:private")
 
             if (directDomain.size > 0) {
                 servers.add(
@@ -446,7 +446,7 @@ object V2rayConfigUtil {
                 )
             }
             if (isCnRoutingMode) {
-                val geositeCn = arrayListOf("geosite:cn", "geosite:geolocation-cn")
+                val geositeCn = arrayListOf("geosite:cn")
                 servers.add(
                     V2rayConfig.DnsBean.ServersBean(
                         domesticDns.first(),
