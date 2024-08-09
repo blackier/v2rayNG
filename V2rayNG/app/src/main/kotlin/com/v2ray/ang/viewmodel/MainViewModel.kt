@@ -185,7 +185,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         getApplication<AngApplication>().toast(R.string.connection_test_testing)
         viewModelScope.launch(Dispatchers.Default) { // without Dispatchers.Default viewModelScope will launch in main thread
             for (item in serversCopy) {
-                val config = V2rayConfigUtil.getV2rayConfig(getApplication(), item.guid)
+                val config = V2rayConfigUtil.getV2rayConfig(getApplication(), item.guid, true)
                 if (config.status) {
                     MessageUtil.sendMsg2TestService(
                         getApplication(),

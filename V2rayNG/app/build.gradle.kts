@@ -14,22 +14,14 @@ android {
         versionCode = 580
         versionName = "1.8.36"
         multiDexEnabled = true
-        splits.abi {
-            reset()
-            include(
-                "arm64-v8a",
-                "armeabi-v7a",
-                "x86_64",
-                "x86"
-            )
-        }
-        ndkVersion "25.1.8937393"
+        ndkVersion = "25.1.8937393"
     }
 
     externalNativeBuild {
         cmake {
-            version "3.22.1"
-            path 'src/main/cpp/CMakeLists.txt'
+            version = "3.22.1"
+            path = file("src/main/cpp/CMakeLists.txt")
+
         }
     }
 
@@ -60,8 +52,10 @@ android {
 
     splits {
         abi {
+            reset()
             isEnable = true
-            isUniversalApk = true
+            isUniversalApk = false
+            include("arm64-v8a","armeabi-v7a","x86","x86_64")
         }
     }
 

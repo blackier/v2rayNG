@@ -39,7 +39,7 @@ object V2rayConfigUtil {
     /**
      * 生成v2ray的客户端配置文件
      */
-    fun getV2rayConfig(context: Context, guid: String): Result {
+    fun getV2rayConfig(context: Context, guid: String, forTest: Boolean = false): Result {
         try {
             val config = MmkvManager.decodeServerConfig(guid) ?: return Result(false, "")
             if (config.configType == EConfigType.CUSTOM) {
@@ -61,8 +61,9 @@ object V2rayConfigUtil {
                 }
             }
 
-            val result = getV2rayNonCustomConfig(context, outbound, config.remarks)
-            //Log.d(ANG_PACKAGE, result.content)
+            val result = getV2rayNonCustomConfig(context, outbound, config.remarks, forTest)
+            if(!forTest)
+                Log.d(ANG_PACKAGE, result.content)
             return result
         } catch (e: Exception) {
             e.printStackTrace()
@@ -77,6 +78,7 @@ object V2rayConfigUtil {
         context: Context,
         outbound: V2rayConfig.OutboundBean,
         remarks: String,
+        forTest: Boolean = false
     ): Result {
         val result = Result(false, "")
         //取得默认配置
@@ -113,6 +115,17 @@ object V2rayConfigUtil {
         }
 
         v2rayConfig.remarks = remarks
+
+        if (forTest) {
+            v2rayConfig.routing.rules.forEach{
+                if(it.ip != null)
+                   it.ip = ArrayList(it.ip!!.filter { !it.startsWith("geo") })
+                if(it.domain != null)
+                    it.domain = ArrayList(it.domain!!.filter { !it.startsWith("geo") })
+            }
+            v2rayConfig.dns.servers?.clear()
+            v2rayConfig.dns.hosts = null
+        }
 
         result.status = true
         result.content = v2rayConfig.toPrettyPrinting()
@@ -222,7 +235,7 @@ object V2rayConfigUtil {
 
             when (routingMode) {
                 ERoutingMode.BYPASS_LAN.value -> {
-                    routingGeo("", "private", TAG_DIRECT, v2rayConfig)
+                    routingGeo("ip", "private", TAG_DIRECT, v2rayConfig)
                 }
 
                 ERoutingMode.BYPASS_MAINLAND.value -> {
@@ -231,7 +244,7 @@ object V2rayConfigUtil {
                 }
 
                 ERoutingMode.BYPASS_LAN_MAINLAND.value -> {
-                    routingGeo("", "private", TAG_DIRECT, v2rayConfig)
+                    routingGeo("ip", "private", TAG_DIRECT, v2rayConfig)
                     routingGeo("", "cn", TAG_DIRECT, v2rayConfig)
                     v2rayConfig.routing.rules.add(0, googleapisRoute)
                 }
@@ -348,8 +361,10 @@ object V2rayConfigUtil {
      */
     private fun customLocalDns(v2rayConfig: V2rayConfig): Boolean {
         try {
+            val domesticDns = Utils.getDomesticDnsServers()
             if (settingsStorage?.decodeBool(AppConfig.PREF_FAKE_DNS_ENABLED) == true) {
                 val geositeCn = arrayListOf("geosite:cn")
+                val geositeNotCn = arrayListOf("geosite:geolocation-!cn")
                 val proxyDomain = userRule2Domain(
                     settingsStorage?.decodeString(AppConfig.PREF_V2RAY_ROUTING_AGENT)
                         ?: ""
@@ -359,13 +374,24 @@ object V2rayConfigUtil {
                         ?: ""
                 )
                 // fakedns with all domains to make it always top priority
+                var index = 0
                 v2rayConfig.dns.servers?.add(
-                    0,
+                    index,
                     V2rayConfig.DnsBean.ServersBean(
                         address = "fakedns",
-                        domains = geositeCn.plus(proxyDomain).plus(directDomain)
+                        domains = geositeNotCn.plus(proxyDomain)
                     )
                 )
+                index++
+                v2rayConfig.dns.servers?.add(
+                    index,
+                    V2rayConfig.DnsBean.ServersBean(
+                        address = domesticDns.first(),
+                        domains = geositeCn.plus(directDomain)
+                    )
+                )
+                index++
+                v2rayConfig.dns.servers?.add(index, "fakedns")
             }
 
             // DNS inbound对象
@@ -432,9 +458,6 @@ object V2rayConfigUtil {
                 settingsStorage?.decodeString(AppConfig.PREF_V2RAY_ROUTING_AGENT)
                     ?: ""
             )
-            remoteDns.forEach {
-                servers.add(it)
-            }
             if (proxyDomain.size > 0) {
                 servers.add(
                     V2rayConfig.DnsBean.ServersBean(
@@ -463,29 +486,30 @@ object V2rayConfigUtil {
                     V2rayConfig.DnsBean.ServersBean(
                         domesticDns.first(),
                         53,
-                        directDomain,
-                        if (isCnRoutingMode) geoipCn else null
+                        directDomain
                     )
                 )
             }
-            if (isCnRoutingMode) {
+            if (isCnRoutingMode && settingsStorage?.decodeBool(AppConfig.PREF_FAKE_DNS_ENABLED) != true) {
                 val geositeCn = arrayListOf("geosite:cn")
                 servers.add(
                     V2rayConfig.DnsBean.ServersBean(
                         domesticDns.first(),
                         53,
-                        geositeCn,
-                        geoipCn
+                        geositeCn
                     )
                 )
+            }
+
+            remoteDns.forEach {
+                servers.add(it)
             }
 
             if (Utils.isPureIpAddress(domesticDns.first())) {
                 v2rayConfig.routing.rules.add(
                     0, V2rayConfig.RoutingBean.RulesBean(
                         outboundTag = TAG_DIRECT,
-                        port = "53",
-                        ip = arrayListOf(domesticDns.first()),
+                        ip = ArrayList(domesticDns),
                         domain = null
                     )
                 )
@@ -514,8 +538,7 @@ object V2rayConfigUtil {
                 v2rayConfig.routing.rules.add(
                     0, V2rayConfig.RoutingBean.RulesBean(
                         outboundTag = TAG_PROXY,
-                        port = "53",
-                        ip = arrayListOf(remoteDns.first()),
+                        ip = ArrayList(remoteDns),
                         domain = null
                     )
                 )
