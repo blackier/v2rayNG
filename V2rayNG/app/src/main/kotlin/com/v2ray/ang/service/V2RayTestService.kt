@@ -65,7 +65,7 @@ class V2RayTestService : Service() {
             val delay = PluginUtil.realPingHy2(this, server)
             return delay
         } else {
-            val config = V2rayConfigUtil.getV2rayConfig(this, guid)
+            val config = V2rayConfigUtil.getV2rayConfig(this, guid, true)
             if (!config.status) {
                 return retFailure
             }

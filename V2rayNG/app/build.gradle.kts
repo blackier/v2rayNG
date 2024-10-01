@@ -16,6 +16,7 @@ android {
         multiDexEnabled = true
         splits {
             abi {
+                reset()
                 isEnable = true
                 include(
                     "arm64-v8a",
