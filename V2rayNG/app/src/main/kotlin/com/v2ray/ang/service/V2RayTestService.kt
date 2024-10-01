@@ -37,6 +37,10 @@ class V2RayTestService : Service() {
             MSG_MEASURE_CONFIG -> {
                 val guid = intent.serializable<String>("content") ?: ""
                 realTestScope.launch {
+                    val domain = MmkvManager.decodeServerConfig(guid) ?.getProxyOutbound()?.getServerAddressAndPort()?:""
+                    if(domain.isNotEmpty()){
+                        Libv2ray.prepareDomain(domain)
+                    }
                     val result = startRealPing(guid)
                     MessageUtil.sendMsg2UI(this@V2RayTestService, MSG_MEASURE_CONFIG_SUCCESS, Pair(guid, result))
                 }
