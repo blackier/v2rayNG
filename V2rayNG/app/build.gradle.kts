@@ -9,25 +9,22 @@ android {
 
     defaultConfig {
         applicationId = "com.v2ray.ang"
-        minSdk = 21
-        targetSdk = 35
+        minSdk = 24
+        targetSdk = 34
         versionCode = 610
         versionName = "1.9.14"
         multiDexEnabled = true
         splits {
             abi {
+                reset()
                 isEnable = true
                 include(
                     "arm64-v8a",
-                    "armeabi-v7a",
-                    "x86_64",
-                    "x86"
                 )
-                isUniversalApk = true
             }
         }
 
-        ndkVersion = "25.1.8937393"
+        ndkVersion = "26.2.11394342"
     }
 
     externalNativeBuild {
