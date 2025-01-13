@@ -209,7 +209,7 @@ func InitV2Env(envPath string, key string) {
 		memoryAssets.RUnlock()
 
 		if !found {
-			if _, err := os.Stat(path); os.IsNotExist(err) {
+			if _, e := os.Stat(path); os.IsNotExist(e) {
 				_, file := filepath.Split(path)
 				r, err = mobasset.Open(file)
 			} else {
@@ -226,6 +226,7 @@ func InitV2Env(envPath string, key string) {
 				log.Printf("local asset: %s", path)
 			} else {
 				log.Printf("read asset failed: %s", path)
+				return r, nil
 			}
 		} else {
 			log.Printf("cached asset: %s", path)
@@ -282,20 +283,13 @@ func NewV2RayPoint(s V2RayVPNServiceSupportsSet, adns bool) *V2RayPoint {
 	v2internet.UseAlternativeSystemDialer(&protectedDialer{
 		protector: s,
 		resolver: func(domain string) (ips []net.IP, err error) {
-			ips, err = LocalDNS(domain, false)
-			if err != nil && v.Vpoint != nil {
-				c := v.Vpoint.GetFeature(feature_dns.ClientType()).(feature_dns.Client)
-				ips, err = c.LookupIP(domain, feature_dns.IPOption{IPv4Enable: true, IPv6Enable: true})
-				log.Printf("[feature_dns] domain=%s, ips=%v, err=%v", domain, ips, err)
-			}
+			c := v.Vpoint.GetFeature(feature_dns.ClientType()).(feature_dns.Client)
+			ips, err = c.LookupIP(domain, feature_dns.IPOption{IPv4Enable: true, IPv6Enable: true})
+			log.Printf("[feature_dns] domain=%s, ips=%v, err=%v", domain, ips, err)
 			return ips, err
 		},
 	})
 	return &v
-}
-
-func CheckVersion() int {
-	return 23
 }
 
 /*
