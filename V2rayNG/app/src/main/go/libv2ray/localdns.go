@@ -46,8 +46,8 @@ func LocalDNS(domain string, disableCache bool) (ips []net.IP, err error) {
 
 	if len(ips) > 1 {
 		// rand ip
-		rand.Seed(time.Now().UnixMilli())
-		rand.Shuffle(len(ips), func(i, j int) {
+		r := rand.New(rand.NewSource(time.Now().UnixMilli()))
+		r.Shuffle(len(ips), func(i, j int) {
 			ips[i], ips[j] = ips[j], ips[i]
 		})
 	}
