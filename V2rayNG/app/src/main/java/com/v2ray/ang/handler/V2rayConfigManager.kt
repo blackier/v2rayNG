@@ -60,7 +60,7 @@ object V2rayConfigManager {
      * @param guid The unique identifier for the V2ray configuration.
      * @return A ConfigResult object containing the configuration details or indicating failure.
      */
-    fun getV2rayConfig(context: Context, guid: String): ConfigResult {
+    fun getV2rayConfig(context: Context, guid: String, forTest: Boolean = false): ConfigResult {
         try {
             val config = MmkvManager.decodeServerConfig(guid) ?: return ConfigResult(false)
             if (config.configType == EConfigType.CUSTOM) {
@@ -69,8 +69,9 @@ object V2rayConfigManager {
                 return ConfigResult(true, guid, raw, domainPort)
             }
 
-            val result = getV2rayNonCustomConfig(context, config)
-            //Log.d(ANG_PACKAGE, result.content)
+            val result = getV2rayNonCustomConfig(context, config, forTest)
+            if(!forTest)
+                Log.d(ANG_PACKAGE, result.content)
             result.guid = guid
             return result
         } catch (e: Exception) {
@@ -86,7 +87,7 @@ object V2rayConfigManager {
      * @param config The profile item containing the configuration details.
      * @return A ConfigResult object containing the result of the configuration retrieval.
      */
-    private fun getV2rayNonCustomConfig(context: Context, config: ProfileItem): ConfigResult {
+    private fun getV2rayNonCustomConfig(context: Context, config: ProfileItem, forTest: Boolean = false): ConfigResult {
         val result = ConfigResult(false)
 
         val address = config.server ?: return result
@@ -126,6 +127,17 @@ object V2rayConfigManager {
             v2rayConfig.policy = null
         }
 
+        if (forTest) {
+            v2rayConfig.routing.rules.forEach{
+                if(it.ip != null)
+                   it.ip = ArrayList(it.ip!!.filter { !it.startsWith("geo") })
+                if(it.domain != null)
+                    it.domain = ArrayList(it.domain!!.filter { !it.startsWith("geo") })
+            }
+            v2rayConfig.dns.servers?.clear()
+            v2rayConfig.dns.hosts = null
+        }
+
         result.status = true
         result.content = v2rayConfig.toPrettyPrinting()
         result.domainPort = if (retMore.first) retMore.second else retOut.second
@@ -152,6 +164,9 @@ object V2rayConfigManager {
             if (!sniffAllTlsAndHttp) {
                 v2rayConfig.inbounds[0].sniffing?.destOverride?.clear()
             }
+            v2rayConfig.inbounds[0].sniffing?.destOverride?.clear()
+            v2rayConfig.inbounds[0].sniffing?.destOverride?.add("http")
+            v2rayConfig.inbounds[0].sniffing?.destOverride?.add("tls")
             if (fakedns) {
                 v2rayConfig.inbounds[0].sniffing?.destOverride?.add("fakedns")
             }
@@ -269,18 +284,23 @@ object V2rayConfigManager {
 
     private fun customLocalDns(v2rayConfig: V2rayConfig): Boolean {
         try {
-            if (MmkvManager.decodeSettingsBool(AppConfig.PREF_FAKE_DNS_ENABLED) == true) {
+            val domesticDns = SettingsManager.getDomesticDnsServers()
+            if (true) {
                 val geositeCn = arrayListOf(GEOSITE_CN)
                 val proxyDomain = userRule2Domain(TAG_PROXY)
                 val directDomain = userRule2Domain(TAG_DIRECT)
                 // fakedns with all domains to make it always top priority
+                var index = 0
                 v2rayConfig.dns.servers?.add(
-                    0,
+                    index,
                     V2rayConfig.DnsBean.ServersBean(
-                        address = "fakedns",
-                        domains = geositeCn.plus(proxyDomain).plus(directDomain)
+                        address = domesticDns.first(),
+                        domains = geositeCn.plus(directDomain).distinct()
                     )
                 )
+                index++
+                if (MmkvManager.decodeSettingsBool(AppConfig.PREF_FAKE_DNS_ENABLED) == true)
+                    v2rayConfig.dns.servers?.add(index, "fakedns")
             }
 
             // DNS inbound
@@ -372,12 +392,18 @@ object V2rayConfigManager {
                 )
             }
 
+            if(MmkvManager.decodeSettingsBool(AppConfig.PREF_LOCAL_DNS_ENABLED) == true)
+                servers.clear()
+
+            remoteDns.forEach {
+                servers.add(it)
+            }
+
             if (Utils.isPureIpAddress(domesticDns.first())) {
                 v2rayConfig.routing.rules.add(
                     0, RulesBean(
                         outboundTag = TAG_DIRECT,
-                        port = "53",
-                        ip = arrayListOf(domesticDns.first()),
+                        ip = ArrayList(domesticDns),
                         domain = null
                     )
                 )
@@ -400,7 +426,7 @@ object V2rayConfigManager {
             //block dns
             val blkDomain = userRule2Domain(TAG_BLOCKED)
             if (blkDomain.isNotEmpty()) {
-                hosts.putAll(blkDomain.map { it to LOOPBACK })
+                //hosts.putAll(blkDomain.map { it to LOOPBACK })
             }
 
             // hardcode googleapi rule to fix play store problems
@@ -426,8 +452,7 @@ object V2rayConfigManager {
                 v2rayConfig.routing.rules.add(
                     0, RulesBean(
                         outboundTag = TAG_PROXY,
-                        port = "53",
-                        ip = arrayListOf(remoteDns.first()),
+                        ip = ArrayList(remoteDns),
                         domain = null
                     )
                 )
