@@ -28,17 +28,21 @@ import com.v2ray.ang.util.MyContextWrapper
 import com.v2ray.ang.util.Utils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.lang.ref.SoftReference
+import kotlin.concurrent.thread
 
 class V2RayVpnService : VpnService(), ServiceControl {
     companion object {
         private const val VPN_MTU = 1500
-        private const val PRIVATE_VLAN4_CLIENT = "10.10.14.1"
-        private const val PRIVATE_VLAN4_ROUTER = "10.10.14.2"
-        private const val PRIVATE_VLAN6_CLIENT = "fc00::10:10:14:1"
-        private const val PRIVATE_VLAN6_ROUTER = "fc00::10:10:14:2"
+        private const val PRIVATE_VLAN4_CLIENT = "172.19.0.1"
+        private const val PRIVATE_VLAN4_ROUTER = "172.19.0.2"
+        private const val PRIVATE_VLAN6_CLIENT = "fdfe:dcba:9876::1"
+        private const val PRIVATE_VLAN6_ROUTER = "fdfe:dcba:9876::2"
         private const val TUN2SOCKS = "libtun2socks.so"
     }
 
@@ -170,6 +174,7 @@ class V2RayVpnService : VpnService(), ServiceControl {
                 val addr = it.split('/')
                 builder.addRoute(addr[0], addr[1].toInt())
             }
+            builder.addRoute(PRIVATE_VLAN4_ROUTER, 32)
         } else {
             builder.addRoute("0.0.0.0", 0)
         }
@@ -251,6 +256,15 @@ class V2RayVpnService : VpnService(), ServiceControl {
         return false
     }
 
+    private fun startProcess(cmd : List<String>) {
+        val proBuilder = ProcessBuilder(cmd)
+        proBuilder.redirectErrorStream(true)
+        process = proBuilder
+                .directory(applicationContext.filesDir)
+                .start()
+        Log.d(packageName, process.toString())
+    }
+
     /**
      * Runs the tun2socks process.
      * Starts the tun2socks process with the appropriate parameters.
@@ -260,7 +274,7 @@ class V2RayVpnService : VpnService(), ServiceControl {
         val cmd = arrayListOf(
             File(applicationContext.applicationInfo.nativeLibraryDir, TUN2SOCKS).absolutePath,
             "--netif-ipaddr", PRIVATE_VLAN4_ROUTER,
-            "--netif-netmask", "255.255.255.252",
+            "--netif-netmask", "255.255.255.0",
             "--socks-server-addr", "$LOOPBACK:${socksPort}",
             "--tunmtu", VPN_MTU.toString(),
             "--sock-path", "sock_path",//File(applicationContext.filesDir, "sock_path").absolutePath,
@@ -279,26 +293,30 @@ class V2RayVpnService : VpnService(), ServiceControl {
         }
         Log.d(packageName, cmd.toString())
 
-        try {
-            val proBuilder = ProcessBuilder(cmd)
-            proBuilder.redirectErrorStream(true)
-            process = proBuilder
-                .directory(applicationContext.filesDir)
-                .start()
-            Thread {
-                Log.d(packageName, "$TUN2SOCKS check")
-                process.waitFor()
-                Log.d(packageName, "$TUN2SOCKS exited")
-                if (isRunning) {
-                    Log.d(packageName, "$TUN2SOCKS restart")
-                    runTun2socks()
-                }
-            }.start()
-            Log.d(packageName, process.toString())
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val exitChannel = Channel<Int>()
+                while(true) {
+                    startProcess(cmd)
+                    thread(name = "$TUN2SOCKS") {
+                        Log.d(packageName,"$TUN2SOCKS check")
+                        // this thread also acts as a daemon thread for waitFor
+                        runBlocking { exitChannel.send(process.waitFor()) }
+                    }
+                    sendFd()
 
-            sendFd()
-        } catch (e: Exception) {
-            Log.d(packageName, e.toString())
+                    val exitCode = exitChannel.receive()
+                    Log.d(packageName,"$TUN2SOCKS exited $exitCode")
+                    Log.d(packageName, process.toString())
+
+                    if (!isRunning) {
+                        break
+                    }
+                    Log.d(packageName,"$TUN2SOCKS restart")
+                }
+            } catch (e: Exception) {
+                Log.d(packageName, e.toString())
+            }
         }
     }
 
@@ -306,27 +324,25 @@ class V2RayVpnService : VpnService(), ServiceControl {
      * Sends the file descriptor to the tun2socks process.
      * Attempts to send the file descriptor multiple times if necessary.
      */
-    private fun sendFd() {
+    private suspend fun sendFd() {
         val fd = mInterface.fileDescriptor
         val path = File(applicationContext.filesDir, "sock_path").absolutePath
         Log.d(packageName, path)
 
-        CoroutineScope(Dispatchers.IO).launch {
-            var tries = 0
-            while (true) try {
-                Thread.sleep(50L shl tries)
-                Log.d(packageName, "sendFd tries: $tries")
-                LocalSocket().use { localSocket ->
-                    localSocket.connect(LocalSocketAddress(path, LocalSocketAddress.Namespace.FILESYSTEM))
-                    localSocket.setFileDescriptorsForSend(arrayOf(fd))
-                    localSocket.outputStream.write(42)
-                }
-                break
-            } catch (e: Exception) {
-                Log.d(packageName, e.toString())
-                if (tries > 5) break
-                tries += 1
+        var tries = 0
+        while (true) try {
+            delay(50L shl tries)
+            Log.d(packageName, "sendFd tries: $tries")
+            LocalSocket().use { localSocket ->
+                localSocket.connect(LocalSocketAddress(path, LocalSocketAddress.Namespace.FILESYSTEM))
+                localSocket.setFileDescriptorsForSend(arrayOf(fd))
+                localSocket.outputStream.write(42)
             }
+            break
+        } catch (e: Exception) {
+            Log.d(packageName, e.toString())
+            if (tries > 5) break
+            tries += 1
         }
     }
 
