@@ -264,8 +264,16 @@ object V2RayServiceManager {
         }
 
         override fun protect(l: Long): Boolean {
-            val serviceControl = serviceControl?.get() ?: return true
-            return serviceControl.vpnProtect(l.toInt())
+            val serviceControl = serviceControl?.get()
+            if(serviceControl == null)
+            {
+                Log.d(ANG_PACKAGE, "serviceControl is null, protect failed")
+                return false;
+            }
+            val ret= serviceControl.vpnProtect(l.toInt())
+            if(!ret)
+                Log.d(ANG_PACKAGE, "vpnProtect failed")
+            return ret
         }
 
         /**
