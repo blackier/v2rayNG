@@ -267,12 +267,12 @@ object V2RayServiceManager {
             val serviceControl = serviceControl?.get()
             if(serviceControl == null)
             {
-                Log.d(ANG_PACKAGE, "serviceControl is null, protect failed")
+                Log.e(AppConfig.TAG, "serviceControl is null, protect failed")
                 return false;
             }
             val ret= serviceControl.vpnProtect(l.toInt())
             if(!ret)
-                Log.d(ANG_PACKAGE, "vpnProtect failed")
+                Log.e(AppConfig.TAG, "vpnProtect failed")
             return ret
         }
 

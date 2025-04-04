@@ -63,11 +63,13 @@ object V2rayConfigManager {
     fun getV2rayConfig(context: Context, guid: String): ConfigResult {
         try {
             val config = MmkvManager.decodeServerConfig(guid) ?: return ConfigResult(false)
-            return if (config.configType == EConfigType.CUSTOM) {
+            val result = if (config.configType == EConfigType.CUSTOM) {
                 getV2rayCustomConfig(guid, config)
             } else {
                 getV2rayNormalConfig(context, guid, config)
             }
+            Log.i(AppConfig.TAG, result.content)
+            return result
         } catch (e: Exception) {
             Log.e(AppConfig.TAG, "Failed to get V2ray config", e)
             return ConfigResult(false)
@@ -379,7 +381,7 @@ object V2rayConfigManager {
                 )
                 index++
                 if (MmkvManager.decodeSettingsBool(AppConfig.PREF_FAKE_DNS_ENABLED) == true)
-                    v2rayConfig.dns.servers?.add(index, "fakedns")
+                    v2rayConfig.dns?.servers?.add(index, "fakedns")
             }
 
             // DNS inbound
@@ -495,8 +497,15 @@ object V2rayConfigManager {
                     var userHostsMap = userHosts?.split(",")
                         ?.filter { it.isNotEmpty() }
                         ?.filter { it.contains(":") }
-                        ?.associate { it.split(":").let { (k, v) -> k to v } }
-                    if (userHostsMap != null) hosts.putAll(userHostsMap)
+                    val userHM = mutableMapOf<String, MutableList<String>>()
+                    userHostsMap?.forEach {
+                        val pair = it.split(":")
+                        if(!userHM.contains(pair[0]))
+                            userHM[pair[0]] = mutableListOf(pair[1])
+                        else
+                            userHM[pair[0]]?.add(pair[1])
+                    }
+                    if (userHM.isNotEmpty()) hosts.putAll(userHM)
                 }
             } catch (e: Exception) {
                 Log.e(AppConfig.TAG, "Failed to configure user DNS hosts", e)
