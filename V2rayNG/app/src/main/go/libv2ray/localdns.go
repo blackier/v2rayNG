@@ -46,8 +46,8 @@ func LocalDNS(domain string, disableCache bool) (ips []net.IP, err error) {
 
 	if len(ips) > 1 {
 		// rand ip
-		rand.Seed(time.Now().UnixMilli())
-		rand.Shuffle(len(ips), func(i, j int) {
+		r := rand.New(rand.NewSource(time.Now().UnixMilli()))
+		r.Shuffle(len(ips), func(i, j int) {
 			ips[i], ips[j] = ips[j], ips[i]
 		})
 	}
@@ -159,7 +159,7 @@ func (s *LocalNameServer) QueryIP(domain string, disableCache bool) (ips []net.I
 		log.Printf("[local_dns] query IP cached failed, domain=%s, err=%v", domain, err)
 	}
 
-	ips, err = appdns.NewLocalDNSClient().QueryIP(ctx, host, featdns.IPOption{IPv4Enable: true, IPv6Enable: true}, false)
+	ips, _, err = appdns.NewLocalDNSClient().QueryIP(ctx, host, featdns.IPOption{IPv4Enable: true, IPv6Enable: true}, false)
 
 	if err == nil {
 		s.updateIP(host, ips)

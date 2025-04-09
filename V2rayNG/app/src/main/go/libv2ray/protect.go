@@ -104,9 +104,7 @@ func (dialer protectedDialer) dial(ctx context.Context, source v2rayNet.Address,
 
 		err = unix.Connect(fd, sockaddr)
 	case v2rayNet.Network_UDP:
-		if !hasBindAddr(sockopt) {
-			err = unix.Bind(fd, &unix.SockaddrInet6{})
-		}
+		err = unix.Bind(fd, &unix.SockaddrInet6{})
 	}
 	if err != nil {
 		unix.Close(fd)
