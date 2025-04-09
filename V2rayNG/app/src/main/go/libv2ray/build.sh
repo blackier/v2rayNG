@@ -12,4 +12,4 @@ curl -o assets/geoip.dat -L https://github.com/Loyalsoldier/v2ray-rules-dat/rele
 mkdir ../../../../libs
 # go mod tidy -v
 gomobile init
-gomobile bind -v -o ../../../../libs/libv2ray.aar -androidapi 21 -ldflags "-s -w -buildid=" .
+gomobile bind -v -androidapi 24 -ldflags='-s -w' -target='android/arm64' -o ../../../../libs/libv2ray.aar ./

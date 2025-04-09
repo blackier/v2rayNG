@@ -10,8 +10,8 @@ android {
 
     defaultConfig {
         applicationId = "com.v2ray.ang"
-        minSdk = 21
-        targetSdk = 35
+        minSdk = 26
+        targetSdk = 33
         versionCode = 646
         versionName = "1.9.46"
         multiDexEnabled = true
@@ -26,17 +26,13 @@ android {
                 } else {
                     include(
                         "arm64-v8a",
-                        "armeabi-v7a",
-                        "x86_64",
-                        "x86"
                     )
                 }
-                isUniversalApk = abiFilterList.isNullOrEmpty()
             }
         }
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        ndkVersion = "25.1.8937393"
+        ndkVersion = "26.2.11394342"
     }
 
     externalNativeBuild {
@@ -59,11 +55,6 @@ android {
 
     flavorDimensions.add("distribution")
     productFlavors {
-        create("fdroid") {
-            dimension = "distribution"
-            applicationIdSuffix = ".fdroid"
-            buildConfigField("String", "DISTRIBUTION", "\"F-Droid\"")
-        }
         create("playstore") {
             dimension = "distribution"
             buildConfigField("String", "DISTRIBUTION", "\"Play Store\"")
