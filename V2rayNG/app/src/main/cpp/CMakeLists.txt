@@ -1,7 +1,7 @@
 # Created by @blackier, base on:
 #   https://github.com/shadowsocks/shadowsocks-android/blob/master/core/src/main/jni/Android.mk
 cmake_minimum_required(VERSION 3.4.1)
-project(V2rayNG)
+project(libtun2socks)
 
 ########################################################
 ## tun2socks
@@ -76,6 +76,8 @@ set(LIBNETTLE_SOURCES
     badvpn/flowextra/PacketPassInactivityMonitor.c
     badvpn/tun2socks/SocksUdpGwClient.c
     badvpn/udpgw_client/UdpGwClient.c
+    badvpn/system/BDatagram_common.c
+    badvpn/socks_udp_client/SocksUdpClient.c
 
     libancillary/fd_recv.c
     libancillary/fd_send.c
