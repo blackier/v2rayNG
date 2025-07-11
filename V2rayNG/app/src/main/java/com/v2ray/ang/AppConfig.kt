@@ -114,6 +114,7 @@ object AppConfig {
     const val DNS_VPN = "1.1.1.1"
     const val GEOSITE_PRIVATE = "geosite:private"
     const val GEOSITE_CN = "geosite:cn"
+    const val GEOSITE_NOT_CN = "geosite:geolocation-!cn"
     const val GEOIP_PRIVATE = "geoip:private"
     const val GEOIP_CN = "geoip:cn"
 
